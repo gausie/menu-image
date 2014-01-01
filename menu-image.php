@@ -46,7 +46,9 @@ class Menu_Image_Plugin {
         add_filter('wp_edit_nav_menu_walker', array($this, 'menu_image_edit_nav_menu_walker_filter'));
         add_filter('walker_nav_menu_start_el', array($this, 'menu_image_nav_menu_item_filter'), 10, 4);
         add_action('admin_enqueue_scripts', array($this, 'add_admin_scripts'));
-        wp_register_script( 'menu-image-script', plugins_url( '/menu-image.js', __FILE__ ) );
+        wp_register_script( 'menu-image-script',  plugins_url( basename( __DIR__ ) . '/menu-image.js' ), array (
+          'jquery'
+        ));
     }
 
     /**
