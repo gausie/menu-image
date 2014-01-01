@@ -45,7 +45,8 @@ class Menu_Image_Plugin {
         add_action('save_post', array($this, 'menu_image_save_post_action'), 10, 2);
         add_filter('wp_edit_nav_menu_walker', array($this, 'menu_image_edit_nav_menu_walker_filter'));
         add_filter('walker_nav_menu_start_el', array($this, 'menu_image_nav_menu_item_filter'), 10, 4);
-        add_action('wp_enqueue_scripts', array($this, 'menu_image_add_inline_style_action'));
+        add_action('admin_enqueue_scripts', array($this, 'add_admin_scripts'));
+        wp_register_script( 'menu-image-script', plugins_url( '/menu-image.js', __FILE__ ) );
     }
 
     /**
@@ -72,6 +73,7 @@ class Menu_Image_Plugin {
      * @return array
      */
     public function menu_image_nav_menu_manage_columns($columns) {
+
         return $columns + array('image' => __('Image', 'menu-image'));
     }
 
@@ -89,6 +91,11 @@ class Menu_Image_Plugin {
             if (isset($_POST[$setting_name][$post_id]) && !empty($_POST[$setting_name][$post_id])) {
                 update_post_meta($post_id, "_$setting_name", esc_sql($_POST[$setting_name][$post_id]));
             }
+        }
+
+        if (isset($_POST["selected-menu-item-image-id-$post_id"]))
+        {
+            set_post_thumbnail($post,$_POST["selected-menu-item-image-id-$post_id"]);
         }
 
         if (!empty($_FILES["menu-item-image_$post_id"]) || !empty($_FILES["menu-item-image_$post_id-hovered"])) {
@@ -200,17 +207,11 @@ class Menu_Image_Plugin {
     }
 
     /**
-     * Loading additional stylesheet.
-     *
-     * Loading custom stylesheet to fix images positioning in match themes
+     * Loading additional scripts
      */
-    public function menu_image_add_inline_style_action() {
-        wp_register_style('menu-image',
-            plugins_url('', __FILE__) . '/menu-image.css',
-            array(),
-            '1.1',
-            'all');
-        wp_enqueue_style('menu-image');
+    public function add_admin_scripts() {
+        wp_enqueue_media();
+        wp_enqueue_script('menu-image-script');
     }
 }
 
@@ -220,6 +221,7 @@ require_once(ABSPATH . 'wp-admin/includes/nav-menu.php');
 class Menu_Image_Walker_Nav_Menu_Edit extends Walker_Nav_Menu_Edit {
 
     function start_el(&$output, $item, $depth, $args) {
+
         global $_wp_nav_menu_max_depth;
         $_wp_nav_menu_max_depth = $depth > $_wp_nav_menu_max_depth ? $depth : $_wp_nav_menu_max_depth;
 
@@ -372,8 +374,11 @@ class Menu_Image_Walker_Nav_Menu_Edit extends Walker_Nav_Menu_Edit {
                 <?php if (!has_post_thumbnail($item_id)) : ?>
                     <label for="edit-menu-item-image-<?php echo $item_id; ?>">
                         <?php _e('Image', 'menu-image'); ?><br/>
-                        <input type="file" name="menu-item-image_<?php echo $item_id; ?>"
-                               id="edit-menu-item-image-<?php echo $item_id; ?>"/>
+                        <img id="menu-image-preview-<?php echo $item_id?>" width="48" height="48" src="/wp-includes/images/crystal/default.png"><br/>
+                        <input type="hidden" id="selected-menu-item-image-id-<?php echo $item_id?>" name="selected-menu-item-image-id-<?php echo $item_id?>" />
+                        <input type="button" class="menu-image-picker-button" data-item-id="<?php echo $item_id?>" value="<?php _e("Select Image",'menu-image')?>" >
+<!--                        <input type="file" name="menu-item-image_--><?php //echo $item_id; ?><!--"-->
+<!--                               id="edit-menu-item-image---><?php //echo $item_id; ?><!--"/>-->
                     </label>
                 <?php else: ?>
                     <?php print get_the_post_thumbnail($item_id, $image_size); ?>
