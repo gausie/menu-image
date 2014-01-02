@@ -100,21 +100,16 @@ class Menu_Image_Plugin {
             set_post_thumbnail($post,$_POST["selected-menu-item-image-id-$post_id"]);
         }
 
-        if (!empty($_FILES["menu-item-image_$post_id"]) || !empty($_FILES["menu-item-image_$post_id-hovered"])) {
-            require_once(ABSPATH . "wp-admin" . '/includes/image.php');
-            require_once(ABSPATH . "wp-admin" . '/includes/file.php');
-            require_once(ABSPATH . "wp-admin" . '/includes/media.php');
-
-            if (!empty($_FILES["menu-item-image_$post_id"])) {
-                $attachment_id = media_handle_upload("menu-item-image_$post_id", $post_id);
-                if ($attachment_id) {
-                    set_post_thumbnail($post, $attachment_id);
-                }
-            }
-            if (!empty($_FILES["menu-item-image_$post_id-hovered"])) {
-                media_handle_upload("menu-item-image_$post_id-hovered", $post_id);
-            }
+        if (isset($_POST["selected-menu-item-hover-id-$post_id"]))
+        {
+            $attachment_id = $_POST["selected-menu-item-hover-id-$post_id"];
+            wp_update_post(array(
+              'ID' => $attachment_id,
+              'post_parent' => $post_id,
+              'post_type' => "attachment"
+            ));
         }
+
         if (isset($_POST['menu_item_remove_image'][$post_id]) && !empty($_POST['menu_item_remove_image'][$post_id])) {
             $args = array(
                 'post_type' => 'attachment',
@@ -372,57 +367,42 @@ class Menu_Image_Walker_Nav_Menu_Edit extends Walker_Nav_Menu_Edit {
                 </label>
             </p>
 
-            <p class="field-image description description-wide">
-                <?php if (!has_post_thumbnail($item_id)) : ?>
-                    <label for="edit-menu-item-image-<?php echo $item_id; ?>">
-                        <?php _e('Image', 'menu-image'); ?><br/>
-                        <img id="menu-image-preview-<?php echo $item_id?>" width="48" height="48" src="/wp-includes/images/crystal/default.png"><br/>
-                        <input type="hidden" id="selected-menu-item-image-id-<?php echo $item_id?>" name="selected-menu-item-image-id-<?php echo $item_id?>" />
-                        <input type="button" class="menu-image-picker-button" data-item-id="<?php echo $item_id?>" value="<?php _e("Select Image",'menu-image')?>" >
-<!--                        <input type="file" name="menu-item-image_--><?php //echo $item_id; ?><!--"-->
-<!--                               id="edit-menu-item-image---><?php //echo $item_id; ?><!--"/>-->
-                    </label>
-                <?php else: ?>
-                    <?php print get_the_post_thumbnail($item_id, $image_size); ?>
-                    <?php $sizes = get_intermediate_image_sizes(); ?>
-                    <?php if (!empty($hovered)) : ?>
-                        <?php print wp_get_attachment_image($hovered->ID, $image_size); ?>
-                    <?php else : ?>
-                        <br/>
-                        <br/>
-                        <label><?php _e("Add on hover image"); ?><input type="checkbox"
-                                                                        onchange="var file = jQuery('#menu-image-hovered-<?php echo $item_id; ?>'); if(this.checked) { file.show() } else { file.hide() }"/></label>
-                        <input id="menu-image-hovered-<?php echo $item_id; ?>" type="file"
-                               name="menu-item-image_<?php echo $item_id; ?>-hovered"
-                               style="display: none; padding-left: 10px;"/>
-                    <?php endif; ?>
-                    <br/>
-                    <br/>
-                    <label><?php _e("Size", 'menu-image'); ?>
-                        <select name="menu_item_image_size[<?php echo $item_id; ?>]">
-                            <?php foreach ($sizes as $size) : ?>
-                                <?php $selected = ($image_size == $size) ? ' selected="selected"' : ''; ?>
-                                <option
-                                    value="<?php echo $size; ?>"<?php echo $selected; ?>><?php echo ucfirst($size); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                    <br/>
-                    <br/>
-                    <label><?php _e("Title position"); ?>: </label>
-                    <?php $positions = array('before', 'hide', 'after'); ?>
-                    <?php foreach ($positions as $key => $position) : ?>
-                        <?php $selected = ($title_position == $position) ? ' checked="checked"' : ''; ?>
-                        <label><input type="radio" name="menu-item-image-title-position[<?php echo $item_id; ?>]"
-                                      value="<?php echo $position; ?>"<?php echo $selected; ?>/> <?php _e(ucfirst($position)); ?>
-                        </label><?php if (isset($positions[$key + 1])) echo " | " ?>
-                    <?php endforeach; ?>
-                    <br/>
-                    <br/>
-                    <label><?php _e("Remove both images", 'menu-image'); ?> <input type="checkbox"
-                                                                                   name="menu_item_remove_image[<?php echo $item_id; ?>]"/></label>
-                <?php endif; ?>
+            <?php $placeholder = "<img id=\"menu-%s-preview-{$item_id}\" class=\"media-upload\" width=\"48\" height=\"48\" src=\"/wp-includes/images/crystal/default.png\">"; ?>
+            <p class="field-image description description-thin">
+              <label for="edit-menu-item-image-<?php echo $item_id; ?>" data-id="<?php echo $item_id; ?>" data-type="image">
+                <?php _e('Image', 'menu-image'); ?><br/>
+                <?php echo has_post_thumbnail($item_id)?get_the_post_thumbnail($item_id, $image_size, array('class'=>'media-upload')):sprintf($placeholder,"image"); ?><br/>
+                <input type="hidden" id="selected-menu-item-image-id-<?php echo $item_id?>" name="selected-menu-item-image-id-<?php echo $item_id?>" />
+              </label>
             </p>
+
+            <p class="field-hover description description-thin">
+              <label for="edit-menu-item-hover-<?oho echo $item_id; ?>" data-id="<?php echo $item_id; ?>" data-type="hover">
+                <?php _e('Hover Image', 'menu-image'); ?><br/>
+                <?php echo (!empty($hovered))?wp_get_attachment_image($hovered->ID, $image_size, false, array('class'=>'media-upload')):sprintf($placeholder,"hover"); ?><br/>    
+                <input type="hidden" id="selected-menu-item-hover-id-<?php echo $item_id?>" name="selected-menu-item-hover-id-<?php echo $item_id?>" />
+              </label>
+            </p>
+
+            <p class="field-image-data description description-wide">
+              <label for="menu_item_image_size[<?php echo $item_id; ?>]">
+                <?php _e("Size", 'menu-image'); ?><br />
+                <select name="menu_item_image_size[<?php echo $item_id; ?>]">
+                <?php foreach (get_intermediate_image_sizes() as $size) : ?>
+                  <option value="<?php echo $size; ?>"<?php echo ($image_size == $size)?' selected':''; ?>><?php echo ucfirst($size); ?></option>
+                <?php endforeach; ?>
+                </select>
+              </label><br />
+              <label for="menu-item-image-title-position[<?php echo $item_id; ?>]">
+                <?php _e("Title position", "menu-image"); ?><br />
+                <?php $positions = array('before', 'hide', 'after'); ?>
+                <?php foreach ($positions as $key => $position) : ?>
+                    <input type="radio" name="menu-item-image-title-position[<?php echo $item_id; ?>]" value="<?php echo $position; ?>"<?php echo ($title_position == $position)?' checked':''; ?>/> <?php _e(ucfirst($position)); ?>
+                    <?php if (isset($positions[$key + 1])) echo " | " ?>
+                <?php endforeach; ?>
+              </label>
+            </p>          
+
             <p class="field-xfn description description-thin">
                 <label for="edit-menu-item-xfn-<?php echo $item_id; ?>">
                     <?php _e('Link Relationship (XFN)'); ?><br/>
